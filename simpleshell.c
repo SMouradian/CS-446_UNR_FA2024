@@ -21,61 +21,58 @@ int executeCommand(char const* enteredCommand, const char* infile, const char* o
 
 //MAIN DRIVER
 int main(){
-    char cwd[500], input[500];
-    char tokenList[500][500];
+    char cwd[500], input[500], tokenList[500][500];
+    int trigger = 1;
 
-    while(1){
+    while(trigger){
         if(getcwd(cwd, sizeof(cwd)) != NULL){
-            printf("@smouradian ➜ %s$", cwd);
+            printf("@smouradian ➜ %s$ ", cwd);
         }
 
-        if(fgets(input, sizeof(input), stdin) != NULL){
-            input[strcspn(input, "\n")] = 0;
-            int tokenCount = parseInput(input, tokenList, 500);
-            
-            if(tokenCount > 0 && strcmp(tokenList[0], "cd") == 0){
-                changeDirectories(tokenList[1]);
+        fgets(input, 500, stdin);
+        int numChar = parseInput(input, tokenList, 100);
+        
+        if(strcmp(tokenList[0], "cd") == 0){
+            changeDirectories(tokenList[0]);
+        }
+        else if(strcmp(tokenList[0], "exit") == 0){
+            return (trigger = 0);
+        }
+        else{
+            char* args[500];
+            for(int i = 0; i < numChar; i ++){
+                args[i] = tokenList[i];
             }
-            else{
-                char* args[500];
-                for(int i = 0; i < tokenCount; i++){
-                    args[i] = tokenList[i];
-                }
-                args[tokenCount] = NULL;
-
-                int status = executeCommand(args[0], NULL, NULL);
-                if(status != 0){
-                    printf("Command execution failed\n");
-                }
-            }
+            args[numChar] = NULL;
+            executeCommand(tokenList[0], NULL, NULL);
         }
     }
+
     return 0;
 }
 
 
 //FUNCTION DEFINITIONS
 int parseInput(char* input, char splitWords[][500], int maxWords){
-    int count;
-    const char* tokens;
+    int count = 0;
+    const char* delim = " \t\n";
+    char* tokens = strtok(input, delim);
 
-    tokens = strtok(input, " ");
     while(tokens != NULL && count < maxWords){
-        strcpy(splitWords[maxWords], tokens);
-        splitWords[count][499] = '\0';
+        strcpy(splitWords[count], tokens);
+        tokens = strtok(NULL, delim);
         count++;
-        tokens = strtok(NULL, " ");
     }
 
     return count;
 }
 
 void changeDirectories(const char* path){
-    if(path == NULL){
-        printf("Path is empty!");
+    if(path == NULL || strlen(path) == 0){
+        printf("Path is empty!\n");
     }
     else if(chdir(path) == -1){
-        printf("Path not formatted Correctly!");
+        printf("Path not formatted Correctly!\n");
     }
     else{
         char cwd[500];
@@ -86,35 +83,25 @@ void changeDirectories(const char* path){
 }
 
 int executeCommand(char const* enteredCommand, const char* infile, const char* outfile){
-    pid_t pid = fork();
-    int status;
+    int status = fork();
+    int pwait;
 
-    if(pid < 0){
-        return -1;
+    if(status < 0){
+        printf("Fork failed: %s\n", strerror(errno));
+        _exit(EXIT_FAILURE);
     }
-    else if(pid == 0){
-        if(infile != NULL){
-            int infileVal = open(infile, O_RDONLY);
-            if(infileVal < 0){
-                _exit(EXIT_FAILURE);
-            }
-            else if(infileVal == 0){
-                dup2(infileVal, STDIN_FILENO);
-                close(infileVal);
-            }
-        }
-
+    else if(status == 0){
         char* const args[] = {(char*)enteredCommand, NULL};
         if(execvp(args[0], args) < 0){
+            printf("Command execution failed: %s\n", strerror(errno));
             _exit(EXIT_FAILURE);
         }
         else{
-            return 0;
+            wait(&pwait);
+            if(WIFEXITED(pwait)){
+                printf("Child finished with exit status: %d\n", WEXITSTATUS(pwait));
+            }
         }
-
     }
-    else{
-        wait(&status);
-        return status;
-    }
+    return status;
 }

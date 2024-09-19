@@ -1,8 +1,8 @@
-simpleshell_c: simpleshell.o
-	gcc -o simpleshell_c simpleshell.o
+simpleExe: simpleshell.o
+	gcc -o simpleExe simpleshell.o
 
 simpleshell.o: simpleshell.c
-	gcc -c simpleshell.c
+	gcc -c -Wall simpleshell.c
 
 clean:
-	rm *.o simpleshell_c
+	rm *.o simpleExe

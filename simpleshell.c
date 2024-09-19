@@ -26,14 +26,16 @@ int main(){
 
     while(trigger){
         if(getcwd(cwd, sizeof(cwd)) != NULL){
-            printf("@smouradian ➜ %s$ ", cwd);
+            printf("smouradian@SamsPC:~%s$ ", cwd);
         }
 
         fgets(input, 500, stdin);
         int numChar = parseInput(input, tokenList, 100);
         
         if(strcmp(tokenList[0], "cd") == 0){
-            changeDirectories(tokenList[0]);
+            if(numChar > 1){
+                changeDirectories(tokenList[1]);
+            }
         }
         else if(strcmp(tokenList[0], "exit") == 0){
             return (trigger = 0);
@@ -71,36 +73,48 @@ void changeDirectories(const char* path){
     if(path == NULL || strlen(path) == 0){
         printf("Path is empty!\n");
     }
-    else if(chdir(path) == -1){
-        printf("Path not formatted Correctly!\n");
+    
+    if(chdir(path) == -1){
+        printf("Path not formatted correctly\n");
+    }
+
+    char cwd[500];
+    if(getcwd(cwd, sizeof(cwd)) != NULL){
     }
     else{
-        char cwd[500];
-        if(getcwd(cwd, sizeof(cwd)) != NULL){
-            printf("@smouradian ➜ %s$", cwd);
-        }
+        printf("Error rerouting directories: %s\n", strerror(errno));
     }
 }
 
 int executeCommand(char const* enteredCommand, const char* infile, const char* outfile){
     int status = fork();
-    int pwait;
 
     if(status < 0){
         printf("Fork failed: %s\n", strerror(errno));
-        _exit(EXIT_FAILURE);
+        return -1;
     }
     else if(status == 0){
+        if(infile != NULL){
+            int inputVal = open(infile, O_RDONLY);
+            if(inputVal < 0){
+                printf("Error opening input file: %s\n", strerror(errno));
+                exit(1);
+            }
+            dup2(inputVal, STDIN_FILENO);
+            close(inputVal);
+        }
+
         char* const args[] = {(char*)enteredCommand, NULL};
         if(execvp(args[0], args) < 0){
-            printf("Command execution failed: %s\n", strerror(errno));
-            _exit(EXIT_FAILURE);
+            printf("Execution failed: %s\n", strerror(errno));
+            exit(1);
         }
-        else{
-            wait(&pwait);
-            if(WIFEXITED(pwait)){
-                printf("Child finished with exit status: %d\n", WEXITSTATUS(pwait));
-            }
+    }
+    else{
+        int pwait;
+        wait(&pwait);
+        if(WIFEXITED(pwait) == 0){
+            printf("Child finished with exit status: %d\n", WEXITSTATUS(pwait));
         }
     }
     return status;

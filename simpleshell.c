@@ -1,8 +1,8 @@
-//Assignment Name	->  Homework 1
-//Author			->  Samuel Mouradian
-//Course			->  Computer Science 446 - Section 1001
-//Professor			-> 	Christos Papachristos
-//Due Date          ->  09.19.2024
+//Assignment Name -> Homework 1
+//Author -> Samuel Mouradian
+//Course -> Computer Science 446 - Section 1001
+//Professor -> Christos Papachristos
+//Due Date -> 09.19.2024
 
 #include <errno.h>
 #include <fcntl.h>

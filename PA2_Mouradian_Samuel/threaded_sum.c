@@ -10,15 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <unistd.h>
-
-
-//DEFINE MACROS
-#define MAXSIZE 100000000
 
 
 // FUNCTION DECLARATIONS
-int parseInput(int, char* [], char**, int*);
+int parseInput(int, char* [], char*, int*);
 int readFile(char[], int[]);
 void* arraySum(void*);
 
@@ -33,16 +28,15 @@ typedef struct _thread_data_t{
 
 // MAIN DRIVER
 int main(int argc, char* argv[]){
-    char* filename;
+    char filename[500];
     int threadCount;
     double elapsedTime;
 
-    if(parseInput(argc, argv, &filename, &threadCount) == -1){
-        return -1;
-    }
+    parseInput(argc, argv, filename, &threadCount);
 
-    int dataArray[MAXSIZE] = {0};
+    int dataArray[1000000];
     int dataCount = readFile(filename, dataArray);
+    
     if(dataCount <= 0){
         return -1;
     }
@@ -54,7 +48,6 @@ int main(int argc, char* argv[]){
 
     long long int totalSum = 0;
     struct timeval startTime, endTime;
-    gettimeofday(&startTime, NULL); // initiated summation time
 
     pthread_mutex_t lockVar;
     pthread_mutex_init(&lockVar, NULL); // created locking variable for all threads to use
@@ -63,30 +56,59 @@ int main(int argc, char* argv[]){
 
     int indexSize = (dataCount + threadCount - 1) / threadCount; // calculates index size
 
-    for(int i = 0; i < threadCount; i++){ // starts the loop through the array of thread_data_t objects
-        threadObjArr[i].data = dataArray;
-        threadObjArr[i].startInd = i * indexSize;
-        threadObjArr[i].endInd = (i + 1) * indexSize > dataCount ? dataCount : (i + 1) * indexSize;
-        threadObjArr[i].lock = &lockVar;
-        threadObjArr[i].totalSum = &totalSum;
+    if(strcmp(filename, "oneThousand.txt") == 0){
+        gettimeofday(&startTime, NULL); // initiated summation time
+
+        for(int i = 0; i < threadCount; i++){ // starts the loop through the array of thread_data_t objects
+            threadObjArr[i].data = dataArray;
+            threadObjArr[i].startInd = i * indexSize;
+            threadObjArr[i].endInd = (i + 1) * indexSize > dataCount ? dataCount : (i + 1) * indexSize;
+            threadObjArr[i].lock = &lockVar;
+            threadObjArr[i].totalSum = &totalSum;
+        }
+
+        pthread_t threadArr[threadCount]; // created an array of pthread_t objects
+
+        // pthread_create portion of code
+        for(int i = 0; i < threadCount; i++){
+            pthread_create(&threadArr[i], NULL, arraySum, (void*)&threadObjArr[i]);
+        }
+
+        // pthread_join portion of code
+        for(int i = 0; i < threadCount; i++){
+            pthread_join(threadArr[i], NULL);
+        }
+
+        gettimeofday(&endTime, NULL); // End summation time
+    }
+    else if(strcmp(filename, "oneMillion.txt") == 0){
+        for(int i = 0; i < threadCount; i++){ // starts the loop through the array of thread_data_t objects
+            threadObjArr[i].data = dataArray;
+            threadObjArr[i].startInd = i * indexSize;
+            threadObjArr[i].endInd = (i + 1) * indexSize > dataCount ? dataCount : (i + 1) * indexSize;
+            threadObjArr[i].lock = &lockVar;
+            threadObjArr[i].totalSum = &totalSum;
+        }
+
+        pthread_t threadArr[threadCount]; // created an array of pthread_t objects
+
+        // pthread_create portion of code
+        for(int i = 0; i < threadCount; i++){
+            pthread_create(&threadArr[i], NULL, arraySum, (void*)&threadObjArr[i]);
+        }
+
+        // pthread_join portion of code
+        for(int i = 0; i < threadCount; i++){
+            pthread_join(threadArr[i], NULL);
+        }
+
+        gettimeofday(&endTime, NULL); // End summation time
+    }
+    else{
+        printf("Error: File not found...\n");
     }
 
-    pthread_t threadArr[threadCount]; // sreated an array of pthread_t objects
-
-    // pthread_create portion of code
-    for(int j = 0; j < threadCount; j++){
-        pthread_create(&threadArr[j], NULL, arraySum, &threadObjArr[j]);
-    }
-
-    // pthread_join portion of code
-    for(int k = 0; k < threadCount; k++){
-        pthread_join(threadArr[k], NULL);
-    }
-
-
-    gettimeofday(&endTime, NULL); // End summation time
-
-    elapsedTime = (endTime.tv_sec - startTime.tv_sec) * 1000.0 + (endTime.tv_usec - startTime.tv_usec) / 1000.0; // calculate elapsed time
+    elapsedTime = ((endTime.tv_sec - startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - startTime.tv_usec) / 1000.0); // calculate elapsed time
 
     printf("Final Sum: %lld\n", totalSum);
     printf("Execution Time: %f ms\n", elapsedTime);
@@ -96,23 +118,21 @@ int main(int argc, char* argv[]){
 
 
 //FUNCTION DEFINITIONS
-int parseInput(int args, char* argv[], char** file, int* numThreads){
+int parseInput(int args, char* argv[], char* file, int* numThreads){
     if(args != 3){
         printf("Error: Too few arguments\n");
         return -1;
     }
-    else{
-        *file = argv[1];
-        *numThreads = atoi(argv[2]);
+    strcpy(file, argv[1]);
+    *numThreads = atoi(argv[2]);
 
-        if(*numThreads <= 0){
-            printf("Error: No threads present\n");
-            return -1;
-        }
+    if(*numThreads <= 0){
+        printf("Error: No threads present\n");
+        return -1;
     }
-
     return 0;
 }
+
 
 int readFile(char fileArray[], int intArray[]){
     FILE *file = fopen(fileArray, "r");
@@ -124,7 +144,7 @@ int readFile(char fileArray[], int intArray[]){
     int count = 0, value;
 
     while(fscanf(file, "%d", &value) == 1){
-        if(count >= MAXSIZE){
+        if(count >= 1000000){
             printf("Error: Exceeded max data size\n");
             break;
         }

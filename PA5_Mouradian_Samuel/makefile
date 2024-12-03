@@ -1,8 +1,8 @@
-myfs: myfs.o
-	gcc -o myfs myfs.o
+myfs_FINAL: myfs.o
+	gcc -o myfs_FINAL myfs.o
 
 myfs.o: myfs.c
 	gcc -c -Wall myfs.c
 
 clean:
-	rm *.o myfs
+	rm *.o myfs_FINAL

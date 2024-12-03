@@ -88,35 +88,37 @@ int roundup(int x, int y) {
 
 
 int main(int argc, char *argv[]){
-    
   inode_t* cur_dir_inode = NULL;
 
+  // Create the filesystem
   myfs_t* myfs = my_mkfs(100*BLKSIZE, 10);
 
-  // create 2 dirs inside [/] (root dir)
+  // Create 2 dirs inside the root (/) directory
   int cur_dir_inode_number = 2;  // root inode
   my_creatdir(myfs, cur_dir_inode_number, "mystuff");  // will be inode 3
   my_creatdir(myfs, cur_dir_inode_number, "homework");  // will be inode 4
   
-  // create 1 dir inside [/homework] dir
-  cur_dir_inode_number = 4;  
-  my_creatdir(myfs, cur_dir_inode_number, "assignment5");  // will be inode 5
-
-  // create 1 dir inside [/homework/assignment5] dir
-  cur_dir_inode_number = 5; 
-  my_creatdir(myfs, cur_dir_inode_number, "mycode");  // will be inode 6
-
-  // create 1 dir inside [/homework/mystuff] dir
-  cur_dir_inode_number = 3;  
+  // Create a dir inside /mystuff
+  cur_dir_inode_number = 3;  // mystuff inode
   my_creatdir(myfs, cur_dir_inode_number, "mydata");  // will be inode 7
 
+  // Create a dir inside /homework
+  cur_dir_inode_number = 4;  // homework inode
+  my_creatdir(myfs, cur_dir_inode_number, "assignment5");  // will be inode 5
+
+  // Create a dir inside /homework/assignment5
+  cur_dir_inode_number = 5;  // assignment5 inode
+  my_creatdir(myfs, cur_dir_inode_number, "mycode");  // will be inode 6
+
+  // Dump the filesystem structure
   printf("\nDumping filesystem structure:\n");
   my_dumpfs(myfs);
 
+  // Crawl through the filesystem structure
   printf("\nCrawling filesystem structure:\n");
   my_crawlfs(myfs);
 
-  // destroy filesystem
+  // Free the filesystem memory
   free(myfs);
   
   return 0;
@@ -285,7 +287,7 @@ void dump_dirinode(myfs_t* myfs, int inode_number, int level) {
   }
 }
 
-#define LEVEL_TREE for(int o=0; o<2*level; ++o){printf(" ");} printf("|"); for(int o=0; o<2*level; ++o){printf("_");}
+#define LEVEL_TREE for(int o = 0; o < 2* level; ++o){ printf(" ");} printf("|"); for(int o = 0; o < 2 * level; ++o){ printf("_");}
 void crawl_dirinode(myfs_t* myfs, int inode_number, int level){
   inode_t* inodetable = myfs->groupdescriptor.groupdescriptor_info.inode_table;
   for(unsigned int block_nr = 0; block_nr < 11; ++block_nr){
@@ -322,18 +324,18 @@ void my_crawlfs(myfs_t* myfs){
 }
 
 // IMPLEMENT THIS FUNCTION
-void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname) {
+void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname){
     unsigned char* bmap_block = malloc(BLKSIZE);
     memcpy(bmap_block, myfs->imap.data, BLKSIZE);
     int free_inode = -1;
 
+    // Find a free inode for the new directory
     for(int i = 0; i < BLKSIZE * 8; i++){
       if(!(bmap_block[i / 8] & (1 << (i % 8)))){
         free_inode = i;
         break;
       }
     }
-
     bmap_block[free_inode / 8] |= (1 << (free_inode % 8));
     memcpy(myfs->imap.data, bmap_block, BLKSIZE);
     free(bmap_block);
@@ -341,26 +343,20 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     unsigned char* block_bmap = malloc(BLKSIZE);
     memcpy(block_bmap, myfs->bmap.data, BLKSIZE);
     int free_data_block = -1;
-
     for(int i = 0; i < BLKSIZE * 8; i++){
       if(!(block_bmap[i / 8] & (1 << (i % 8)))){
         free_data_block = i;
         break;
       }
     }
-
     block_bmap[free_data_block / 8] |= (1 << (free_data_block % 8));
     memcpy(myfs->bmap.data, block_bmap, BLKSIZE);
     free(block_bmap);
 
-
     inode_t* inode_table = myfs->groupdescriptor.groupdescriptor_info.inode_table;
-
-
     inode_t* parent_directory_inode = &inode_table[cur_dir_inode_number];
     parent_directory_inode->size += sizeof(dirent_t);
     parent_directory_inode->blocks++;
-
 
     int new_inode_number = free_inode;
     inode_t* new_directory_inode = &inode_table[new_inode_number];
@@ -368,23 +364,20 @@ void my_creatdir(myfs_t* myfs, int cur_dir_inode_number, const char* new_dirname
     new_directory_inode->blocks = 1;
     new_directory_inode->data[0] = &myfs->groupdescriptor.groupdescriptor_info.block_data[free_data_block];
 
-
     dirent_t new_directory_entry[2];
     new_directory_entry[0].inode = new_inode_number;
     new_directory_entry[0].file_type = 2;
     new_directory_entry[0].name_len = 1;
     strcpy(new_directory_entry[0].name, ".");
-
+    
     new_directory_entry[1].inode = cur_dir_inode_number;
     new_directory_entry[1].file_type = 2;
     new_directory_entry[1].name_len = 2;
     strcpy(new_directory_entry[1].name, "..");
 
-
     memcpy(myfs->groupdescriptor.groupdescriptor_info.block_data[free_data_block].data, new_directory_entry, sizeof(new_directory_entry));
 
-    // If parent directory does not have a data block, allocate it
-    if(parent_directory_inode->data[0] == NULL){
+    if (parent_directory_inode->data[0] == NULL) {
       parent_directory_inode->data[0] = &myfs->groupdescriptor.groupdescriptor_info.block_data[free_data_block];
     }
 
